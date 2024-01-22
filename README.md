@@ -1,6 +1,6 @@
 # fastapi-tts-azure
 
-This is an API for generating text-to-speech using Azure Cognitive Services. It utilizes FastAPI to create a simple and efficient interface for converting text to speech.
+This is an API for generating text-to-speech using Azure Cognitive Services.
 
 ## Install
 
@@ -18,6 +18,14 @@ Create a `.env` file:
 SPEECH_KEY=your_key
 SERVICE_REGION=your_region
 ```
+
+## Obtaining Azure Cognitive Services Speech API Key
+
+1. Visit the [Azure AI Services](https://azure.microsoft.com/en-us/products/ai-services/ai-speech) page.
+2. Create a new resource in Azure by selecting "Speech service".
+3. In the resource's dashboard, navigate to the "Keys and endpoint" section.
+4. Find "KEY 1". This is your `SPEECH_KEY`.
+5. Locate the "Location/Region" info, which corresponds to your `SERVICE_REGION`.
 
 ## Usage
 
