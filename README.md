@@ -25,7 +25,7 @@ SERVICE_REGION=your_region
 2. Create a new resource in Azure by selecting "Speech service".
 3. In the resource's dashboard, navigate to the "Keys and endpoint" section.
 4. Find "KEY 1". This is your `SPEECH_KEY`.
-5. Locate the "Location/Region" info, which corresponds to your `SERVICE_REGION`.
+5. Locate the "Location/Region" info. This is your `SERVICE_REGION`.
 
 ## Usage
 
@@ -37,3 +37,7 @@ SERVICE_REGION=your_region
 
 - [Supported languages](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support) of Azure Speech service.
 - How to custom [speaking styles and roles](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/speech-synthesis-markup-voice).
+
+## API Documentation
+
+- [Documentation](https://fastapi-tts-azure.onrender.com/docs) made with Swagger.
