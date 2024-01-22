@@ -32,3 +32,8 @@ SERVICE_REGION=your_region
 1. Run the FastAPI server: `uvicorn main:app --reload`
 2. Open your browser and go to `http://127.0.0.1:8000/docs` to view the Swagger documentation.
 3. Use the provided endpoints to generate text-to-speech based on your requirements.
+
+## Custom TTS Voice
+
+- [Supported languages](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support) of Azure Speech service.
+- How to custom [speaking styles and roles](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/speech-synthesis-markup-voice).

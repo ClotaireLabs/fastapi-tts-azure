@@ -19,6 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+os.makedirs(AUDIO_FOLDER, exist_ok=True)
 app.mount("/{AUDIO_FOLDER}", StaticFiles(directory=os.path.abspath(AUDIO_FOLDER), html=True), name="{AUDIO_FOLDER}")
 
 class TextAndIdInput(BaseModel):

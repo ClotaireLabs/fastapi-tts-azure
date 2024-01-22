@@ -18,7 +18,6 @@ speech_config = speechsdk.SpeechConfig(subscription=SPEECH_KEY, region=SERVICE_R
 speech_config.speech_synthesis_voice_name = TTS_VOICE_NAME
 
 async def generate_wav(input_data: BaseModel, request: Request):
-    os.makedirs(AUDIO_FOLDER, exist_ok=True)
     output_file = os.path.join(AUDIO_FOLDER, f"{input_data.id}.wav")
     audio_config = speechsdk.audio.AudioOutputConfig(filename=output_file)
 
