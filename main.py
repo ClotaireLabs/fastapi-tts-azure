@@ -1,7 +1,7 @@
 import os
 import hashlib
 import requests
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Header
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -12,7 +12,8 @@ load_dotenv()
 
 AZURE_KEY = os.getenv("AZURE_KEY")
 AZURE_REGION = os.getenv("AZURE_REGION")
-BASE_URL = os.getenv("BASE_URL", "")  # optional
+BASE_URL = os.getenv("BASE_URL", "")
+API_KEY = os.getenv("API_KEY")
 
 AUDIO_FOLDER = "static/audio"
 os.makedirs(AUDIO_FOLDER, exist_ok=True)
@@ -36,10 +37,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static mount
+# Static files for audio
 app.mount("/static", StaticFiles(directory=os.path.abspath("static"), html=True), name="static")
 
-# Azure TTS handler
+# Optional root route
+@app.get("/")
+def root():
+    return {"message": "Azure TTS API is running. Visit /docs to try it."}
+
+# TTS generator
 def synthesize_speech(text: str, voice: str = "en-US-AriaNeural", language: str = "en-US", filepath: str = ""):
     if not AZURE_KEY or not AZURE_REGION:
         raise HTTPException(status_code=500, detail="Azure credentials not set")
@@ -64,11 +70,18 @@ def synthesize_speech(text: str, voice: str = "en-US-AriaNeural", language: str 
     with open(filepath, "wb") as f:
         f.write(response.content)
 
-# Endpoint
+# Main endpoint with API key check
 @app.post("/tts", response_model=dict, summary="Generate TTS Audio", description="Generate TTS audio file (MP3) based on input text.")
-async def tts_endpoint(input_data: TextAndIdInput, request: Request):
+async def tts_endpoint(
+    input_data: TextAndIdInput,
+    request: Request,
+    x_api_key: str = Header(default=None)
+):
+    if API_KEY and x_api_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Unauthorized: Invalid API key")
+
     try:
-        # Use hash to avoid duplicates
+        # Generate audio hash
         hash_input = f"{input_data.id}:{input_data.text}"
         audio_hash = hashlib.sha256(hash_input.encode()).hexdigest()
         audio_path = os.path.join(AUDIO_FOLDER, f"{audio_hash}.mp3")
@@ -82,7 +95,7 @@ async def tts_endpoint(input_data: TextAndIdInput, request: Request):
     except HTTPException as e:
         raise e
 
-# Custom docs branding
+# Custom Swagger docs
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
@@ -99,4 +112,5 @@ app.openapi = custom_openapi
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
