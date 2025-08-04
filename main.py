@@ -1,10 +1,21 @@
 import os
+import hashlib
+import requests
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from tts_generator import generate_wav, AUDIO_FOLDER
+from dotenv import load_dotenv
+
+load_dotenv()
+
+AZURE_KEY = os.getenv("AZURE_KEY")
+AZURE_REGION = os.getenv("AZURE_REGION")
+BASE_URL = os.getenv("BASE_URL", "")  # optional
+
+AUDIO_FOLDER = "static/audio"
+os.makedirs(AUDIO_FOLDER, exist_ok=True)
 
 class TextAndIdInput(BaseModel):
     id: str
@@ -12,7 +23,7 @@ class TextAndIdInput(BaseModel):
 
 app = FastAPI(swagger_ui_parameters={"syntaxHighlight.theme": "obsidian"})
 
-
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -25,17 +36,53 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-os.makedirs(AUDIO_FOLDER, exist_ok=True)
-app.mount("/{AUDIO_FOLDER}", StaticFiles(directory=os.path.abspath(AUDIO_FOLDER), html=True), name="{AUDIO_FOLDER}")
+# Static mount
+app.mount("/static", StaticFiles(directory=os.path.abspath("static"), html=True), name="static")
 
-@app.post("/tts", response_model=dict, summary="Generate TTS Audio", description="Generate TTS audio file (in WAV format) based on input text.")
+# Azure TTS handler
+def synthesize_speech(text: str, voice: str = "en-US-AriaNeural", language: str = "en-US", filepath: str = ""):
+    if not AZURE_KEY or not AZURE_REGION:
+        raise HTTPException(status_code=500, detail="Azure credentials not set")
+
+    endpoint = f"https://{AZURE_REGION}.tts.speech.microsoft.com/cognitiveservices/v1"
+    headers = {
+        "Ocp-Apim-Subscription-Key": AZURE_KEY,
+        "Content-Type": "application/ssml+xml",
+        "X-Microsoft-OutputFormat": "audio-16khz-32kbitrate-mono-mp3"
+    }
+
+    ssml = f"""
+    <speak version='1.0' xml:lang='{language}'>
+        <voice name='{voice}'>{text}</voice>
+    </speak>
+    """
+
+    response = requests.post(endpoint, headers=headers, data=ssml.encode("utf-8"))
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail=f"Azure TTS failed: {response.text}")
+
+    with open(filepath, "wb") as f:
+        f.write(response.content)
+
+# Endpoint
+@app.post("/tts", response_model=dict, summary="Generate TTS Audio", description="Generate TTS audio file (MP3) based on input text.")
 async def tts_endpoint(input_data: TextAndIdInput, request: Request):
     try:
-        audio_url = await generate_wav(input_data, request)
-        return {"audio_url": audio_url}
+        # Use hash to avoid duplicates
+        hash_input = f"{input_data.id}:{input_data.text}"
+        audio_hash = hashlib.sha256(hash_input.encode()).hexdigest()
+        audio_path = os.path.join(AUDIO_FOLDER, f"{audio_hash}.mp3")
+        public_url = f"{BASE_URL}/static/audio/{audio_hash}.mp3" if BASE_URL else f"/static/audio/{audio_hash}.mp3"
+
+        if not os.path.exists(audio_path):
+            synthesize_speech(input_data.text, filepath=audio_path)
+
+        return {"audio_url": public_url}
+
     except HTTPException as e:
         raise e
 
+# Custom docs branding
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
@@ -52,4 +99,4 @@ app.openapi = custom_openapi
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
